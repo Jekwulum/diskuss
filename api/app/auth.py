@@ -37,7 +37,12 @@ def login():
         'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=10000)
     }, config['secret_key'], algorithm='HS256')
 
-    return jsonify({'token': token, 'message': 'SUCCESS'}), 200
+    # make sure to remove the password from the user object before returning and to make user  JSON serializable
+    user['_id'] = str(user['_id'])
+    
+    del user['password']
+
+    return jsonify({'token': token, 'user': user, 'message': 'SUCCESS'}), 200
 
 
 @auth_bp.route('/signup', methods=['POST'])
