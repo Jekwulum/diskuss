@@ -12,14 +12,17 @@ class MessageHandler:
         self.messages = db.messages
         self.discussions = db.discussions
 
-    def create_or_get_discussion(self, user_id, data, is_group=False):
+    def create_or_get_discussion(self, user_id, data=None, is_group=False, participants=None):
         # data -> {discussion_id, recipient_id}
         """Create or retrieve a discussion between two users."""
         try:
-            if data.get("discussion_id"):
+            if data and data.get("discussion_id"):
                 discussion = self.discussions.find_one({"_id": data["discussion_id"]})
             else:
-                participants = sorted([str(user_id), str(data["recipient_id"])])
+                if not participants:
+                    participants = sorted([str(user_id), str(data["recipient_id"])])
+                else:
+                    participants = sorted([str(user_id)] + participants)
                 discussion = self.discussions.find_one({"participants": participants})
 
                 if not discussion:
@@ -44,7 +47,7 @@ class MessageHandler:
 
     def get_discussions(self, user_id):
         """Retrieve discussions for a specific user, with last message and participant info."""
-        # Step 1: Find discussions where user is a participant
+        # Find discussions where user is a participant
         discussions_cursor = self.discussions.find(
             {"participants": {"$in": [str(user_id)]}},
             {
@@ -52,19 +55,19 @@ class MessageHandler:
                 "is_group": 1,
                 "messages": {"$slice": -1},  # Only fetch the last message
             }
-        )
+        ).sort("timestamp", 1)
 
         result = []
         user_ids_to_fetch = set()
 
         discussions = list(discussions_cursor)
         
-        # Step 2: Collect all user_ids from all discussions
+        # Collect all user_ids from all discussions
         for d in discussions:
             for pid in d.get("participants", []):
                 user_ids_to_fetch.add(pid)
 
-        # Step 3: Bulk fetch user profiles
+        # Bulk fetch user profiles
         users_map = {
             str(user["_id"]): user
             for user in self.users.find(
@@ -73,7 +76,7 @@ class MessageHandler:
             )
         }
 
-        # Step 4: For each discussion, build response object
+        # For each discussion, build response object
         for d in discussions:
             d["_id"] = str(d["_id"])
             d["is_group"] = d.get("is_group", False)
@@ -90,7 +93,11 @@ class MessageHandler:
             ]
 
             # Format last message
-            last_msg = d.get("messages", [{}])[0]
+            last_msg = d.get("messages", [{}])
+            if len(last_msg) > 0:
+                last_msg = last_msg[0]
+            else: last_msg = ""
+
             if isinstance(last_msg, ObjectId):
                 msg_doc = self.messages.find_one({"_id": last_msg})
             else:
@@ -100,13 +107,18 @@ class MessageHandler:
                 msg_doc["_id"] = str(msg_doc["_id"])
                 msg_doc = serialize_datetime_fields(msg_doc)
                 d["last_message"] = msg_doc
+                d["last_message_timestamp"] = msg_doc.get("timestamp", "")
             else:
                 d["last_message"] = {}
+                d["last_message_timestamp"] = {}
 
             # Remove raw messages field
             d.pop("messages", None)
 
             result.append(d)
+
+        # Sort discussions by the timestamp of the last message (descending order)
+        result.sort(key=lambda x: x.get("last_message_timestamp", ""), reverse=True)
 
         return result
 

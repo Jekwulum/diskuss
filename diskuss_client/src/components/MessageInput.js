@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const MessageInput = ({ socket, discussion_id, recipient_id}) => {
+const MessageInput = ({ socket, discussion_id, recipient_id, onNewMessage}) => {
   const [text, setText] = useState('');
 
   const handleSubmit = (e) => {
@@ -12,7 +12,14 @@ const MessageInput = ({ socket, discussion_id, recipient_id}) => {
 
     socket.emit('send_message', messagePayload);
     setText('');
+    socket.emit('get_discussions', {discussion_id});
   };
+
+  useEffect(() => {
+    socket.on('get_discussions', (data) => {
+      onNewMessage(data);
+    });
+  }, [onNewMessage, socket]);
 
   return (
     <form

@@ -13,6 +13,14 @@ class UserHandler:
             return True, user
         else:
             return False, None
+    
+    def get_users_by_username(self, username):
+        users = self.users.find({"username": {"$regex": username, "$options": "i"}})
+        users = [user for user in users]
+        for user in users:
+            user["_id"] = str(user["_id"])
+            del user["password"]
+        return users
         
     def connect_user(self, user_id, socket_id):
         # add to connected users with the user_id as key and socket_id as value in a dict
@@ -27,7 +35,14 @@ class UserHandler:
         return self.connected_users
     
     def disconnect_user(self, socket_id):
-        self.connected_users = {key: [sid for sid in value if sid != socket_id] for key, value in self.connected_users.items()}
+        # remove the socket_id from the connected users
+        for user in self.connected_users:
+            for user_id, socket_ids in user.items():
+                if socket_id in socket_ids:
+                    socket_ids.remove(socket_id)
+                    if not socket_ids:
+                        self.connected_users.remove(user)
+                    break
         return self.connected_users
     
     def get_user_socket_ids(self, user_id):

@@ -65,8 +65,9 @@ def handle_connect(auth):
 
 @socketio.on("disconnect")
 def handle_disconnect():
+    user_id = session.get("user")["user_id"]
     user_handler.disconnect_user(request.sid)
-    print(f"User {request.sid} disconnected")
+    print(f"User ({user_id}) with socket: {request.sid} disconnected")
     print(f"Connected users: {user_handler.connected_users}")
 
 
@@ -101,29 +102,33 @@ def handle_send_message(data):
     user = session.get("user")
     data = json.loads(data) if isinstance(data, str) else data
 
-    status, result = message_handler.send_message(
-        {**data, "sender_id": user["user_id"]}
-    )
+    user_id = user.get("user_id")
+    status, result = message_handler.send_message({**data, "sender_id": user_id})
     # emit("send_message", "Hi")
     if not status:
         emit("error", result)
         return False
 
     # emit to socket ids of both sender and recipient
-    sender_socket_ids = user_handler.get_user_socket_ids(user["user_id"])
+    sender_socket_ids = user_handler.get_user_socket_ids(user_id)
+
+    discussions = message_handler.get_discussions(user_id)
     for socket_id in sender_socket_ids:
         emit("receive_message", result, room=socket_id)
+        emit("get_discussions", discussions, room=socket_id)
 
-    if data.get("recipient_id"):
-        recipient_socket_ids = user_handler.get_user_socket_ids(data["recipient_id"])
+    if recipient_id := data.get("recipient_id"):
+        # emit to recipient
+        discussions = message_handler.get_discussions(recipient_id)
+        recipient_socket_ids = user_handler.get_user_socket_ids(recipient_id)
         for socket_id in recipient_socket_ids:
             emit("receive_message", result, room=socket_id)
+            emit("get_discussions", discussions, room=socket_id)
 
 
 @socketio.on("get_discussion_messages")
 # @socket_jwt_required
 def get_discussion_messages(data):
-    print("here")
     data = json.loads(data) if isinstance(data, str) else data
     if not data.get("discussion_id", None):
         emit("error", {"message": "Missing discussion_id"})

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import MessageInput from './MessageInput';
 
-const Chat = ({ discussion, user, socket }) => {
+const Chat = ({ discussion, user, socket, onNewMessage }) => {
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
   const [messages, setMessages] = useState([]);
@@ -46,7 +46,6 @@ const Chat = ({ discussion, user, socket }) => {
     if (!socket) return;
 
     const handleReceiveMessage = (message) => {
-      console.log("Received message:", message.data);
       setMessages((prevMessages) => [...message.data]);
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -99,6 +98,7 @@ const Chat = ({ discussion, user, socket }) => {
         socket={socket}
         discussion_id={discussion_id}
         recipient_id={discussion.participants.find(p => p._id !== user._id)._id}
+        onNewMessage={onNewMessage}
       />
     </div>
   );

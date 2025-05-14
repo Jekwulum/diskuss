@@ -4,6 +4,7 @@ import axios from 'axios';
 import { initSocket, getSocket } from '../socket.conn';
 import config from '../config';
 import Chat from './Chat';
+import StartDiscussion from './StartDiscussion';
 
 const ChatLayout = ({ user }) => {
   const navigate = useNavigate();
@@ -12,6 +13,9 @@ const ChatLayout = ({ user }) => {
   const [socketReady, setSocketReady] = useState(false);
   const [socket, setSocket] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true); // New state for sidebar visibility
+
+  const [showStartForm, setShowStartForm] = useState(false);
+
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -31,6 +35,8 @@ const ChatLayout = ({ user }) => {
       socket.on("connect_error", (err) => {
         console.error("Socket error:", err.message);
       });
+
+      socket.on("", () => { });
     }
 
     const fetchDiscussions = async () => {
@@ -57,75 +63,107 @@ const ChatLayout = ({ user }) => {
   }
 
   return (
-    <div className="relative flex h-screen">
-      {/* Sidebar with sliding animation */}
-      <aside
-        className={`bg-white absolute lg:relative z-10 h-full transition-all duration-300 ease-in-out 
+    <>
+      <div className="relative flex h-screen">
+        {/* Sidebar with sliding animation */}
+        <aside
+          className={`bg-white absolute lg:relative z-10 h-full transition-all duration-300 ease-in-out 
           ${sidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full lg:-translate-x-0 lg:w-12'}`}
-      >
-        {/* Toggle button - always visible */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute top-0 right-0 p-2 translate-x-full bg-blue-100 rounded-r-lg hover:bg-blue-200 lg:right-auto lg:left-full lg:translate-x-0"
         >
-          {sidebarOpen ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          )}
-        </button>
+          {/* Toggle button - always visible */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="absolute top-0 right-0 p-2 translate-x-full bg-blue-100 rounded-r-lg hover:bg-blue-200 lg:right-auto lg:left-full lg:translate-x-0"
+          >
+            {sidebarOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
 
-        {/* Sidebar content */}
-        <div className={`overflow-y-auto h-full ${!sidebarOpen && 'hidden'}`}>
-          <h2 className="p-2 mb-4 text-xl font-bold">Discussions</h2>
-          {discussions.map((disc) => {
-            const otherParticipants = disc.participants.filter(p => p._id !== user._id);
-            const names = otherParticipants.map(p => p.username).join(', ');
-            const lastMsg = disc.last_message;
+          {/* Sidebar content */}
+          <div className={`overflow-y-auto h-full ${!sidebarOpen && 'hidden'}`}>
+            <h2 className="p-2 mb-4 text-xl font-bold">Discussions</h2>
 
-            return (
-              <div
-                key={disc._id}
-                onClick={() => setActiveDiscussion(disc)}
-                className={`p-2 mb-2 rounded cursor-pointer transition ${activeDiscussion?._id === disc._id ? 'bg-blue-300' : 'bg-blue-100 hover:bg-gray-200'}`}
+            <div className="flex items-center justify-center p-2">
+              <button
+                onClick={() => setShowStartForm(true)}
+                className="flex items-center justify-center w-2/3 px-2 py-1 text-sm text-white bg-green-600 rounded shadow-lg hover:bg-green-700"
               >
-                <div className="font-semibold text-gray-800">@{names}</div>
-                {lastMsg && (
-                  <div className="text-sm text-gray-600 truncate">
-                    {lastMsg.text}
-                    <span className="block mt-1 text-xs text-gray-400">
-                      {new Date(lastMsg.timestamp).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      })}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </aside>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
 
-      {/* Main content */}
-      <main className="flex-1">
-        {activeDiscussion ? (
-          <Chat user={user} discussion={activeDiscussion} socket={socket} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="p-4">Select a conversation</div>
+
+            {discussions.map((disc) => {
+              const otherParticipants = disc.participants.filter(p => p._id !== user._id);
+              const names = otherParticipants.map(p => p.username).join(', ');
+              const lastMsg = disc.last_message;
+
+              return (
+                <div
+                  key={disc._id}
+                  onClick={() => setActiveDiscussion(disc)}
+                  className={`p-2 mb-2 rounded cursor-pointer transition ${activeDiscussion?._id === disc._id ? 'bg-blue-300' : 'bg-blue-100 hover:bg-gray-200'}`}
+                >
+                  <div className="font-semibold text-gray-800">@{names}</div>
+                  {lastMsg && (
+                    <div className="text-sm text-gray-600 truncate">
+                      {lastMsg.text}
+                      <span className="block mt-1 text-xs text-gray-400">
+                        {new Date(lastMsg.timestamp).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-        )}
-      </main>
-    </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1">
+          {activeDiscussion ? (
+            <Chat
+              user={user}
+              discussion={activeDiscussion}
+              socket={socket}
+              onNewMessage={(discussions) => {
+                setDiscussions(discussions);
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="p-4">Select a conversation</div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <StartDiscussion
+        user={user}
+        isOpen={showStartForm}
+        setIsOpen={setShowStartForm}
+        onDiscussionCreated={(newDiscussion) => {
+          setDiscussions(prev => [newDiscussion, ...prev]);
+          setActiveDiscussion(newDiscussion);
+        }}
+      />
+    </>
   );
 };
 
